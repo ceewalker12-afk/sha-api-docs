@@ -1,0 +1,520 @@
+openapi: 3.0.3
+info:
+  title: SHA Verification System API
+  description: Kenya's national health insurance management platform for the Social Health Authority (SHA)
+  version: 1.0.0
+  contact:
+    name: Christopher Mugambi
+    email: ceewalker12@gmail.com
+  license:
+    name: Proprietary
+servers:
+  - url: http://localhost:5000
+    description: Development
+  - url: https://your-domain.com
+    description: Production
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          type: object
+          properties:
+            id: { type: integer }
+            username: { type: string }
+            name: { type: string }
+            role: { type: string }
+
+    Member:
+      type: object
+      properties:
+        id: { type: integer }
+        full_name: { type: string }
+        national_id: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        dob: { type: string, format: date }
+        gender: { type: string }
+        county: { type: string }
+        sub_county: { type: string }
+        ward: { type: string }
+        status: { type: string, enum: [active, suspended, inactive] }
+        registration_date: { type: string, format: date-time }
+
+    Claim:
+      type: object
+      properties:
+        id: { type: integer }
+        member_id: { type: integer }
+        hospital_id: { type: integer }
+        treatment_type: { type: string }
+        claim_amount: { type: number }
+        description: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        risk_score: { type: integer }
+        is_duplicate: { type: boolean }
+        submission_date: { type: string, format: date-time }
+
+    Hospital:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        facility_code: { type: string }
+        county: { type: string }
+        status: { type: string, enum: [active, pending, verified, suspended] }
+
+    FraudAlert:
+      type: object
+      properties:
+        id: { type: integer }
+        alert_type: { type: string }
+        description: { type: string }
+        severity: { type: string, enum: [low, medium, high] }
+        status: { type: string, enum: [active, resolved] }
+        created_at: { type: string, format: date-time }
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login and get JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+
+  /api/auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh JWT token
+      responses:
+        '200':
+          description: New token issued
+
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout
+      responses:
+        '200':
+          description: Logged out
+
+  /api/auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user info
+
+  /api/members:
+    get:
+      tags: [Members]
+      summary: List all members
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of members
+    post:
+      tags: [Members]
+      summary: Register new member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [full_name, national_id]
+              properties:
+                full_name: { type: string }
+                national_id: { type: string }
+                phone: { type: string }
+                county: { type: string }
+      responses:
+        '201':
+          description: Member created
+
+  /api/members/{member_id}:
+    get:
+      tags: [Members]
+      summary: Get single member
+      parameters:
+        - in: path
+          name: member_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Member details
+        '404':
+          description: Not found
+    put:
+      tags: [Members]
+      summary: Update member
+      parameters:
+        - in: path
+          name: member_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Members]
+      summary: Delete member
+      parameters:
+        - in: path
+          name: member_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Deleted
+
+  /api/members/{member_id}/eligibility:
+    get:
+      tags: [Members]
+      summary: Check member eligibility
+      parameters:
+        - in: path
+          name: member_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Eligibility status
+
+  /api/claims:
+    get:
+      tags: [Claims]
+      summary: List claims
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: member_id
+          schema: { type: integer }
+        - in: query
+          name: hospital_id
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of claims
+    post:
+      tags: [Claims]
+      summary: Submit new claim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [member_id, hospital_id, claim_amount]
+              properties:
+                member_id: { type: integer }
+                hospital_id: { type: integer }
+                claim_amount: { type: number }
+                treatment_type: { type: string }
+                description: { type: string }
+      responses:
+        '201':
+          description: Claim submitted
+
+  /api/claims/{claim_id}/approve:
+    post:
+      tags: [Claims]
+      summary: Approve claim
+      parameters:
+        - in: path
+          name: claim_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Approved
+
+  /api/claims/{claim_id}/reject:
+    post:
+      tags: [Claims]
+      summary: Reject claim
+      parameters:
+        - in: path
+          name: claim_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Rejected
+
+  /api/claims/stats:
+    get:
+      tags: [Claims]
+      summary: Claims statistics
+      responses:
+        '200':
+          description: Stats
+
+  /api/hospitals:
+    get:
+      tags: [Hospitals]
+      summary: List hospitals
+      responses:
+        '200':
+          description: List of hospitals
+    post:
+      tags: [Hospitals]
+      summary: Register hospital
+      responses:
+        '201':
+          description: Hospital registered
+
+  /api/hospitals/{hospital_id}/stats:
+    get:
+      tags: [Hospitals]
+      summary: Hospital performance stats
+      parameters:
+        - in: path
+          name: hospital_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Stats
+
+  /api/hospitals/{hospital_id}/verify:
+    post:
+      tags: [Hospitals]
+      summary: Verify hospital
+      parameters:
+        - in: path
+          name: hospital_id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Verification updated
+
+  /api/fraud/alerts:
+    get:
+      tags: [Fraud Detection]
+      summary: List fraud alerts
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: severity
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of alerts
+
+  /api/fraud/risk-assessment:
+    post:
+      tags: [Fraud Detection]
+      summary: Run risk assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, id]
+              properties:
+                type: { type: string, enum: [claim, member] }
+                id: { type: integer }
+      responses:
+        '200':
+          description: Risk score and recommendation
+
+  /api/fraud/stats:
+    get:
+      tags: [Fraud Detection]
+      summary: Fraud statistics
+      responses:
+        '200':
+          description: Stats
+
+  /api/notifications/sms:
+    post:
+      tags: [Notifications]
+      summary: Send SMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, message]
+              properties:
+                phone: { type: string }
+                message: { type: string }
+                priority: { type: string, default: normal }
+      responses:
+        '200':
+          description: SMS sent
+
+  /api/notifications/email:
+    post:
+      tags: [Notifications]
+      summary: Send email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, subject, body]
+              properties:
+                to: { type: string }
+                subject: { type: string }
+                body: { type: string }
+      responses:
+        '200':
+          description: Email sent
+
+  /api/payments/initiate:
+    post:
+      tags: [Payments]
+      summary: Initiate M-Pesa payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, amount, reference, description]
+              properties:
+                phone: { type: string }
+                amount: { type: number }
+                reference: { type: string }
+                description: { type: string }
+      responses:
+        '200':
+          description: Payment initiated
+
+  /api/payments/status/{transaction_id}:
+    get:
+      tags: [Payments]
+      summary: Check payment status
+      parameters:
+        - in: path
+          name: transaction_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Payment status
+
+  /api/system/health:
+    get:
+      tags: [System]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: System healthy
+
+  /api/system/status:
+    get:
+      tags: [System]
+      summary: System status
+      security: []
+      responses:
+        '200':
+          description: Service statuses
+
+  /api/audit/logs:
+    get:
+      tags: [Audit]
+      summary: Get audit logs
+      parameters:
+        - in: query
+          name: user_identity
+          schema: { type: string }
+        - in: query
+          name: action
+          schema: { type: string }
+        - in: query
+          name: start_date
+          schema: { type: string }
+        - in: query
+          name: end_date
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 100 }
+      responses:
+        '200':
+          description: Audit logs
+
+  /api/audit/logs/security:
+    get:
+      tags: [Audit]
+      summary: Get security logs
+      responses:
+        '200':
+          description: Security logs
+
+  /health:
+    get:
+      tags: [System]
+      summary: Root health check
+      security: []
+      responses:
+        '200':
+          description: Healthy
