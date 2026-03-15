@@ -1,135 +1,126 @@
-# SHA System API Documentation
+# SHA Verification System — API & System Documentation
 
-> **Social Health Authority (SHA) Kenya — REST API Reference**
+> Kenya's national health insurance management platform for the Social Health Authority (SHA)
 
-This documentation covers all available REST API endpoints for the SHA System — a health insurance management platform built for Kenya's Social Health Authority. The system manages member registration, claims processing, hospital verification, fraud detection, and community health promoter (CHP) workflows.
+**Developer:** Christopher Mugambi | University of Nairobi
+**Contact:** ceewalker12@gmail.com
+**Version:** 1.0.0
+
+---
+
+## Quick Navigation
+
+### System Information
+| Document | Description |
+|----------|-------------|
+| [System Overview](docs/system-overview.md) | Architecture, tech stack, capabilities, use cases |
+| [Technical Specifications](docs/technical/specifications.md) | Performance, security, compliance, deployment options |
+| [Business Information](docs/business/business-info.md) | Value proposition, pricing, ROI calculator |
+
+### API Reference
+| Module | Base Path | Description |
+|--------|-----------|-------------|
+| [Authentication](endpoints/auth.md) | `/api/auth` | Login, register, JWT token management |
+| [Members](endpoints/members.md) | `/api/members` | Member registration & eligibility |
+| [Claims](endpoints/claims.md) | `/api/claims` | Claims submission & processing |
+| [Hospitals](endpoints/hospitals.md) | `/api/hospitals` | Hospital management & verification |
+| [Fraud Detection](endpoints/fraud.md) | `/api/fraud` | Risk assessment & fraud alerts |
+
+### Workflows (with Diagrams)
+| Workflow | Description |
+|----------|-------------|
+| [CHP Workflow](workflows/chp-workflow.md) | Community health promoter end-to-end flow |
+| [Claims Workflow](workflows/claims-workflow.md) | Full claim lifecycle from submission to payment |
+| [Fraud Workflow](workflows/fraud-workflow.md) | Fraud detection and investigation process |
+
+### Guides
+| Guide | Description |
+|-------|-------------|
+| [Quick Start](docs/guides/quickstart.md) | Running in 5 minutes + code examples (Python, JS, PHP, cURL) |
+
+### Enterprise & Security
+| Document | Description |
+|----------|-------------|
+| [Security Documentation](docs/security/security.md) | Architecture, encryption, RBAC, compliance |
+| [Enterprise Features](docs/enterprise/enterprise-features.md) | Scaling, HA, disaster recovery, SLAs, support tiers |
+
+### Legal & Compliance
+| Document | Description |
+|----------|-------------|
+| [Legal Documentation](docs/legal/legal.md) | Terms of service, privacy policy, license, DPA, SLA |
+
+### Marketing & Roadmap
+| Document | Description |
+|----------|-------------|
+| [Case Studies & Roadmap](docs/marketing/case-studies.md) | Use cases, demo info, Postman collection, roadmap, partner program |
+
+---
+
+## What This System Does
+
+```mermaid
+graph LR
+    A[CHP in Field] -->|Registers household| B[SHA System]
+    C[Hospital] -->|Submits claim| B
+    D[Patient] -->|Checks coverage via USSD| B
+    B -->|Detects fraud| E[Fraud Alert]
+    B -->|Approves claim| F[Payment]
+    B -->|Verifies eligibility| C
+    B -->|Audit trail| G[Compliance Reports]
+```
+
+- **Members:** Register, search, verify eligibility
+- **Claims:** Submit, score risk, approve/reject, track
+- **Hospitals:** Register, verify, monitor performance
+- **Fraud:** Auto-detect, alert, investigate, resolve
+- **USSD:** Mobile access via *123# — no smartphone needed
+- **AI/ML:** Fraud scoring, explainable AI, network analysis
+
+---
+
+## 5-Minute Quick Start
+
+```bash
+# 1. Install
+pip install -r requirements.txt
+
+# 2. Setup
+python setup_system.py
+
+# 3. Run
+python main_app.py
+
+# 4. Login
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"YOUR_PASSWORD"}'
+
+# 5. Use the token
+curl http://localhost:5000/api/members \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Full guide → [Quick Start](docs/guides/quickstart.md)
 
 ---
 
 ## Base URL
 
 ```
-http://localhost:5000
+http://localhost:5000        # Development
+https://your-domain.com     # Production
 ```
 
-> For production deployments, replace with your hosted domain.
-
----
-
-## Authentication
-
-All endpoints (except `/api/auth/login` and `/api/auth/register`) require a **Bearer JWT token** in the request header.
-
+All API endpoints require:
 ```http
-Authorization: Bearer <your_token_here>
+Authorization: Bearer <jwt_token>
 ```
 
-Tokens are obtained via the [Login endpoint](endpoints/auth.md#login) and expire after **24 hours**.
-
----
-
-## API Modules
-
-| Module | Base Path | Description |
-|--------|-----------|-------------|
-| [Authentication](endpoints/auth.md) | `/api/auth` | Login, register, token management |
-| [Members](endpoints/members.md) | `/api/members` | SHA member registration & management |
-| [Claims](endpoints/claims.md) | `/api/claims` | Health claims submission & processing |
-| [Hospitals](endpoints/hospitals.md) | `/api/hospitals` | Hospital registration & verification |
-| [Fraud Detection](endpoints/fraud.md) | `/api/fraud` | Risk assessment & fraud alerts |
-
----
-
-## Workflows
-
-| Workflow | Description |
-|----------|-------------|
-| [CHP Registration Workflow](workflows/chp-workflow.md) | End-to-end community health promoter process |
-| [Claims Processing Workflow](workflows/claims-workflow.md) | Full claim lifecycle from submission to payment |
-| [Fraud Detection Workflow](workflows/fraud-workflow.md) | How risk scoring and alerts work |
-
----
-
-## Response Format
-
-All responses return JSON. Successful responses include the requested data. Errors follow this format:
-
-```json
-{
-  "error": "Description of what went wrong"
-}
-```
-
-### HTTP Status Codes
-
-| Code | Meaning |
-|------|---------|
-| `200` | Success |
-| `201` | Created successfully |
-| `400` | Bad request / missing required fields |
-| `401` | Unauthorized / invalid or expired token |
-| `404` | Resource not found |
-| `500` | Internal server error |
-
----
-
-## Pagination
-
-Endpoints that return lists support pagination via query parameters:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `page` | `1` | Page number |
-| `per_page` | `20` | Results per page |
-
-**Example:**
-```
-GET /api/members?page=2&per_page=10
-```
-
-**Paginated Response:**
-```json
-{
-  "members": [...],
-  "total": 150,
-  "page": 2,
-  "per_page": 10
-}
-```
-
----
-
-## Tech Stack
-
-- **Backend:** Python / Flask
-- **Auth:** JWT (JSON Web Tokens)
-- **Database:** SQLite (development) / PostgreSQL (production)
-- **Frontend:** Tkinter (desktop) + Next.js (web portal)
-
----
-
-## Quick Start
-
-1. Start the backend server:
-   ```bash
-   python main_app.py
-   ```
-
-2. Login to get a token:
-   ```bash
-   curl -X POST http://localhost:5000/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"username": "admin", "password": "your_password"}'
-   ```
-
-3. Use the token in subsequent requests:
-   ```bash
-   curl http://localhost:5000/api/members \
-     -H "Authorization: Bearer <token>"
-   ```
+Except `POST /api/auth/login` and `POST /api/auth/register`.
 
 ---
 
 ## License
 
-See [LICENSE](../sha-system/LICENSE) in the main repository.
+Proprietary — Christopher Mugambi © 2024–2025. See [Legal Documentation](docs/legal/legal.md) for full terms.
+For licensing inquiries: ceewalker12@gmail.com
